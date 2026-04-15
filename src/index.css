@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AG Grid theme overrides */
+.ag-theme-alpine {
+  --ag-font-size: 13px;
+  --ag-row-height: 36px;
+  --ag-header-height: 40px;
+}

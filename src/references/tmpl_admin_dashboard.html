@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — Admin Dashboard (Desktop)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;display:flex;min-height:100vh;}
+
+/* ── Two-pane layout ── */
+.preview-pane{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 32px;gap:24px;overflow-y:auto;}
+.spec-pane{width:360px;background:#fff;border-left:1px solid #e0e0e0;overflow-y:auto;flex-shrink:0;}
+.pane-head{padding:18px 20px 14px;border-bottom:1px solid #f0f0f0;}
+.pane-head h2{font-size:14px;font-weight:700;color:#111;}
+.pane-head p{font-size:11.5px;color:#888;margin-top:3px;}
+.spec-section{padding:14px 20px;border-bottom:1px solid #f5f5f5;}
+.spec-section h3{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.spec-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px;font-size:12px;}
+.spec-row .lbl{color:#888;flex-shrink:0;width:130px;}
+.spec-row .val{color:#111;font-weight:500;text-align:right;word-break:break-all;}
+.spec-row .val.code{font-family:monospace;font-size:11px;background:#f5f5f5;padding:1px 5px;border-radius:3px;}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.tag-ok{background:#e8f5e9;color:#2E7D32;}
+.tag-note{background:#fff3e0;color:#E65100;}
+.checklist{list-style:none;font-size:12px;}
+.checklist li{padding:3px 0;color:#333;}
+.checklist li::before{content:'✓ ';color:#22C55E;font-weight:700;}
+.checklist li.warn::before{content:'⚠ ';color:#E65100;}
+.snippet{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:11px;padding:12px;border-radius:6px;overflow-x:auto;white-space:pre;line-height:1.55;margin-top:6px;}
+.preview-label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;align-self:flex-start;}
+
+/* ── Admin Dashboard UI ── */
+.admin-wrap{width:100%;max-width:860px;}
+.browser-chrome{background:#e8e8e8;border-radius:10px 10px 0 0;padding:8px 14px;display:flex;align-items:center;gap:10px;border:1px solid #d0d0d0;border-bottom:none;}
+.traffic-lights{display:flex;gap:6px;}
+.tl{width:11px;height:11px;border-radius:50%;}
+.tl-r{background:#ff5f57;}
+.tl-a{background:#febc2e;}
+.tl-g{background:#28c840;}
+.url-bar{flex:1;background:#fff;border-radius:5px;padding:4px 12px;font-size:12px;color:#555;text-align:center;border:1px solid #ddd;}
+.admin-card{background:#fff;border-radius:0 0 14px 14px;border:1px solid #d0d0d0;padding:28px 28px 24px;box-shadow:0 4px 24px rgba(0,0,0,.07);}
+.admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.admin-title{font-size:22px;font-weight:700;color:#111;}
+.dl-btn{background:#2196F3;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;}
+.tabs{display:flex;border-bottom:2px solid #e8e8e8;margin-bottom:0;gap:0;}
+.tab{padding:9px 20px;font-size:13px;font-weight:500;color:#888;cursor:pointer;white-space:nowrap;}
+.tab.active{font-weight:600;color:#1a1a1a;border-bottom:2.5px solid #1a1a1a;margin-bottom:-2px;}
+.tab-badge{background:#EF4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:5px;}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table thead tr{border-bottom:1px solid #e8e8e8;}
+.data-table th{padding:11px 12px;text-align:left;font-weight:500;color:#888;font-size:12px;white-space:nowrap;}
+.data-table td{padding:13px 12px;}
+.row-alt{background:#EBF4FB;}
+.row-plain{background:#fff;}
+.cell-id{color:#2196F3;font-weight:600;cursor:pointer;}
+.cell-name{color:#111;font-weight:500;}
+.cell-type{color:#555;}
+.cell-amount{color:#111;font-weight:600;}
+.cell-date{color:#555;}
+.cell-actions{display:flex;gap:10px;align-items:center;}
+.act-view{color:#2196F3;font-weight:500;cursor:pointer;font-size:12.5px;}
+.act-approve{color:#22C55E;font-weight:500;cursor:pointer;font-size:12.5px;}
+.act-reject{color:#EF4444;font-weight:500;cursor:pointer;font-size:12.5px;}
+.act-sep{color:#aaa;}
+.admin-foot{margin-top:18px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f0f0;padding-top:14px;}
+.foot-count{font-size:12px;color:#aaa;}
+.foot-brand{font-size:11px;color:#aaa;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ PREVIEW PANE ═══════════════════ -->
+<div class="preview-pane">
+  <div class="preview-label">Admin Dashboard — Desktop View</div>
+
+  <div class="admin-wrap">
+    <!-- Browser chrome -->
+    <div class="browser-chrome">
+      <div class="traffic-lights">
+        <div class="tl tl-r"></div>
+        <div class="tl tl-a"></div>
+        <div class="tl tl-g"></div>
+      </div>
+      <div class="url-bar">🔒 claims.brand.zotok.ai</div>
+    </div>
+
+    <!-- Admin card -->
+    <div class="admin-card">
+
+      <!-- Header -->
+      <div class="admin-header">
+        <div class="admin-title">Expense Claims</div>
+        <button class="dl-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><polyline points="7 10 12 15 17 10" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+          Download
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active">Pending for Approval <span class="tab-badge">5</span></div>
+        <div class="tab">Waiting for Disbursement</div>
+        <div class="tab">Disbursed</div>
+        <div class="tab">Rejected</div>
+      </div>
+
+      <!-- Table -->
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Record ID</th>
+            <th>Field Agent</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-alt">
+            <td style="color:#555;">1</td>
+            <td><span class="cell-id">REC-4821</span></td>
+            <td class="cell-name">Rajesh Sharma</td>
+            <td class="cell-type">Event Expense</td>
+            <td class="cell-amount">₹3,400</td>
+            <td class="cell-date">28 Mar 2026</td>
+            <td><div class="cell-actions"><span class="act-view">View</span><span class="act-sep">|</span><span class="act-approve">Approve</span><span class="act-sep">|</span><span class="act-reject">Reject</span></div></td>
+          </tr>
+          <tr class="row-plain">
+            <td style="color:#555;">2</td>
+            <td><span class="cell-id">REC-4819</span></td>
+            <td class="cell-name">Priya Nair</td>
+            <td class="cell-type">Meeting Expense</td>
+            <td class="cell-amount">₹1,850</td>
+            <td class="cell-date">27 Mar 2026</td>
+            <td><div class="cell-actions"><span class="act-view">View</span><span class="act-sep">|</span><span class="act-approve">Approve</span><span class="act-sep">|</span><span class="act-reject">Reject</span></div></td>
+          </tr>
+          <tr class="row-alt">
+            <td style="color:#555;">3</td>
+            <td><span class="cell-id">REC-4816</span></td>
+            <td class="cell-name">Manish Dubey</td>
+            <td class="cell-type">Travel Expense</td>
+            <td class="cell-amount">₹2,100</td>
+            <td class="cell-date">26 Mar 2026</td>
+            <td><div class="cell-actions"><span class="act-view">View</span><span class="act-sep">|</span><span class="act-approve">Approve</span><span class="act-sep">|</span><span class="act-reject">Reject</span></div></td>
+          </tr>
+          <tr class="row-plain">
+            <td style="color:#555;">4</td>
+            <td><span class="cell-id">REC-4812</span></td>
+            <td class="cell-name">Sonal Mehta</td>
+            <td class="cell-type">Event Expense</td>
+            <td class="cell-amount">₹5,750</td>
+            <td class="cell-date">25 Mar 2026</td>
+            <td><div class="cell-actions"><span class="act-view">View</span><span class="act-sep">|</span><span class="act-approve">Approve</span><span class="act-sep">|</span><span class="act-reject">Reject</span></div></td>
+          </tr>
+          <tr class="row-alt">
+            <td style="color:#555;">5</td>
+            <td><span class="cell-id">REC-4809</span></td>
+            <td class="cell-name">Karan Joshi</td>
+            <td class="cell-type">Meeting Expense</td>
+            <td class="cell-amount">₹980</td>
+            <td class="cell-date">24 Mar 2026</td>
+            <td><div class="cell-actions"><span class="act-view">View</span><span class="act-sep">|</span><span class="act-approve">Approve</span><span class="act-sep">|</span><span class="act-reject">Reject</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Footer -->
+      <div class="admin-foot">
+        <div class="foot-count">Showing 5 of 5 records</div>
+      </div>
+
+    </div><!-- /admin-card -->
+  </div><!-- /admin-wrap -->
+</div><!-- /preview-pane -->
+
+
+<!-- ═══════════════════ SPEC PANE ═══════════════════ -->
+<div class="spec-pane">
+  <div class="pane-head">
+    <h2>Admin Dashboard</h2>
+    <p>Desktop web UI for manager review · Not a phone frame</p>
+  </div>
+
+  <!-- When to use -->
+  <div class="spec-section">
+    <h3>When to Use</h3>
+    <p style="font-size:12px;color:#555;line-height:1.6;">Use when a journey includes a back-office step where a manager, finance team, or admin reviews and takes action on a batch of records (claims, orders, approvals, etc.) on desktop.</p>
+  </div>
+
+  <!-- Layout tokens -->
+  <div class="spec-section">
+    <h3>Layout</h3>
+    <div class="spec-row"><span class="lbl">Container max-width</span><span class="val">900px</span></div>
+    <div class="spec-row"><span class="lbl">screens-area override</span><span class="val code">align-items:flex-start; padding-top:32px</span></div>
+    <div class="spec-row"><span class="lbl">Card border-radius</span><span class="val">0 0 14px 14px</span></div>
+    <div class="spec-row"><span class="lbl">Card box-shadow</span><span class="val code">0 4px 24px rgba(0,0,0,.07)</span></div>
+    <div class="spec-row"><span class="lbl">Card padding</span><span class="val">28px 28px 24px</span></div>
+  </div>
+
+  <!-- Browser chrome tokens -->
+  <div class="spec-section">
+    <h3>Browser Chrome</h3>
+    <div class="spec-row"><span class="lbl">Chrome bg</span><span class="val code">#e8e8e8</span></div>
+    <div class="spec-row"><span class="lbl">Chrome border-radius</span><span class="val">10px 10px 0 0</span></div>
+    <div class="spec-row"><span class="lbl">Red dot</span><span class="val code">#ff5f57</span></div>
+    <div class="spec-row"><span class="lbl">Amber dot</span><span class="val code">#febc2e</span></div>
+    <div class="spec-row"><span class="lbl">Green dot</span><span class="val code">#28c840</span></div>
+    <div class="spec-row"><span class="lbl">Dot size</span><span class="val">11×11px, border-radius 50%</span></div>
+    <div class="spec-row"><span class="lbl">URL bar</span><span class="val code">#fff, border-radius 5px</span></div>
+    <div class="spec-row"><span class="lbl">URL format</span><span class="val">🔒 module.brand.zotok.ai</span></div>
+  </div>
+
+  <!-- Color tokens -->
+  <div class="spec-section">
+    <h3>Color Tokens</h3>
+    <div class="spec-row"><span class="lbl">Page title</span><span class="val code">#111, 22px, 700</span></div>
+    <div class="spec-row"><span class="lbl">Download button</span><span class="val code">#2196F3</span></div>
+    <div class="spec-row"><span class="lbl">Active tab text</span><span class="val code">#1a1a1a (or brand color)</span></div>
+    <div class="spec-row"><span class="lbl">Active tab underline</span><span class="val code">2.5px solid brand color</span></div>
+    <div class="spec-row"><span class="lbl">Inactive tab</span><span class="val code">#888</span></div>
+    <div class="spec-row"><span class="lbl">Badge (pending count)</span><span class="val code">#EF4444 bg, #fff text</span></div>
+    <div class="spec-row"><span class="lbl">Table header text</span><span class="val code">#888, 12px, 500</span></div>
+    <div class="spec-row"><span class="lbl">Alt row bg</span><span class="val code">#EBF4FB</span></div>
+    <div class="spec-row"><span class="lbl">Plain row bg</span><span class="val code">#fff</span></div>
+    <div class="spec-row"><span class="lbl">Record ID</span><span class="val code">#2196F3, 600</span></div>
+    <div class="spec-row"><span class="lbl">Agent name</span><span class="val code">#111, 500</span></div>
+    <div class="spec-row"><span class="lbl">Type / Date</span><span class="val code">#555</span></div>
+    <div class="spec-row"><span class="lbl">Amount</span><span class="val code">#111, 600</span></div>
+    <div class="spec-row"><span class="lbl">Action: View</span><span class="val code">#2196F3</span></div>
+    <div class="spec-row"><span class="lbl">Action: Approve</span><span class="val code">#22C55E</span></div>
+    <div class="spec-row"><span class="lbl">Action: Reject</span><span class="val code">#EF4444</span></div>
+    <div class="spec-row"><span class="lbl">Action separator</span><span class="val code">#aaa</span></div>
+    <div class="spec-row"><span class="lbl">Footer text</span><span class="val code">#aaa, 12px / 11px</span></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="spec-section">
+    <h3>Tab Bar Rules</h3>
+    <ul class="checklist">
+      <li>Border-bottom on tab bar: 2px solid #e8e8e8</li>
+      <li>Active tab underline: 2.5px solid brand color, margin-bottom: -2px</li>
+      <li>Only ONE tab active at a time</li>
+      <li>Badge (red pill) on tabs that have pending items</li>
+      <li>Tab labels: sentence case, concise</li>
+      <li class="warn">Actions column changes per tab (e.g., no Approve/Reject on Disbursed tab)</li>
+    </ul>
+  </div>
+
+  <!-- Table rules -->
+  <div class="spec-section">
+    <h3>Table Rules</h3>
+    <ul class="checklist">
+      <li>border-collapse: collapse on table element</li>
+      <li>Rows alternate #EBF4FB / #fff (first data row = #EBF4FB)</li>
+      <li>Record IDs are blue and clickable (link to detail view)</li>
+      <li>Amounts bold (#111, font-weight 600)</li>
+      <li>Actions: View | Approve | Reject for pending tab</li>
+      <li>Separator | in #aaa between each action</li>
+      <li class="warn">Adapt column headers to the client's domain</li>
+    </ul>
+  </div>
+
+  <!-- Footer -->
+  <div class="spec-section">
+    <h3>Footer</h3>
+    <ul class="checklist">
+      <li>"Showing N of N records" — left aligned, #aaa</li>
+      <li>ZoTok brand — right aligned, #aaa</li>
+      <li>Separated by border-top: 1px solid #f0f0f0, padding-top: 14px</li>
+    </ul>
+  </div>
+
+  <!-- HTML snippet -->
+  <div class="spec-section">
+    <h3>HTML Snippet — Outer Shell</h3>
+    <div class="snippet">&lt;!-- screens-area override --&gt;
+&lt;div class="screens-area"
+  style="align-items:flex-start;
+         padding-top:32px;"&gt;
+  &lt;div style="width:100%;max-width:900px;"&gt;
+
+    &lt;!-- Browser chrome --&gt;
+    &lt;div style="background:#e8e8e8;
+      border-radius:10px 10px 0 0;
+      padding:8px 14px;
+      display:flex;align-items:center;
+      gap:10px;border:1px solid #d0d0d0;
+      border-bottom:none;"&gt;
+      &lt;div style="display:flex;gap:6px;"&gt;
+        &lt;div style="width:11px;height:11px;
+          border-radius:50%;
+          background:#ff5f57;"&gt;&lt;/div&gt;
+        &lt;div style="width:11px;height:11px;
+          border-radius:50%;
+          background:#febc2e;"&gt;&lt;/div&gt;
+        &lt;div style="width:11px;height:11px;
+          border-radius:50%;
+          background:#28c840;"&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div style="flex:1;background:#fff;
+        border-radius:5px;padding:4px 12px;
+        font-size:12px;color:#555;
+        text-align:center;
+        border:1px solid #ddd;"&gt;
+        🔒 module.brand.zotok.ai
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- Admin card --&gt;
+    &lt;div style="background:#fff;
+      border-radius:0 0 14px 14px;
+      border:1px solid #d0d0d0;
+      padding:28px 28px 24px;
+      box-shadow:0 4px 24px
+        rgba(0,0,0,.07);"&gt;
+      ...
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</div>
+  </div>
+
+  <!-- Table row snippet -->
+  <div class="spec-section">
+    <h3>HTML Snippet — Table Row</h3>
+    <div class="snippet">&lt;!-- Alternating: #EBF4FB / #fff --&gt;
+&lt;tr style="background:#EBF4FB;"&gt;
+  &lt;td style="padding:13px 12px;
+    color:#555;"&gt;1&lt;/td&gt;
+  &lt;td style="padding:13px 12px;"&gt;
+    &lt;span style="color:#2196F3;
+      font-weight:600;cursor:pointer;"&gt;
+      REC-001
+    &lt;/span&gt;
+  &lt;/td&gt;
+  &lt;td style="padding:13px 12px;
+    color:#111;font-weight:500;"&gt;
+    Agent Name
+  &lt;/td&gt;
+  &lt;td style="padding:13px 12px;
+    color:#555;"&gt;Type&lt;/td&gt;
+  &lt;td style="padding:13px 12px;
+    color:#111;font-weight:600;"&gt;
+    ₹0,000
+  &lt;/td&gt;
+  &lt;td style="padding:13px 12px;
+    color:#555;"&gt;DD Mon YYYY&lt;/td&gt;
+  &lt;td style="padding:13px 12px;"&gt;
+    &lt;div style="display:flex;
+      gap:10px;align-items:center;"&gt;
+      &lt;span style="color:#2196F3;
+        font-weight:500;cursor:pointer;
+        font-size:12.5px;"&gt;View&lt;/span&gt;
+      &lt;span style="color:#aaa;"&gt;|&lt;/span&gt;
+      &lt;span style="color:#22C55E;
+        font-weight:500;cursor:pointer;
+        font-size:12.5px;"&gt;Approve&lt;/span&gt;
+      &lt;span style="color:#aaa;"&gt;|&lt;/span&gt;
+      &lt;span style="color:#EF4444;
+        font-weight:500;cursor:pointer;
+        font-size:12.5px;"&gt;Reject&lt;/span&gt;
+    &lt;/div&gt;
+  &lt;/td&gt;
+&lt;/tr&gt;</div>
+  </div>
+
+  <!-- Live example -->
+  <div class="spec-section">
+    <h3>Live Example</h3>
+    <p style="font-size:12px;color:#555;line-height:1.6;">
+      Hindalco DSR Expense Claim journey — Page 2<br>
+      <code style="font-size:11px;background:#f5f5f5;padding:1px 4px;border-radius:3px;">projects/Hindalco/journey_dsr_expense_claim.html</code>
+    </p>
+  </div>
+
+</div><!-- /spec-pane -->
+
+</body>
+</html>

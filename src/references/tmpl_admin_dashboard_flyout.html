@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — Admin Dashboard Flyout Panel</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;display:flex;min-height:100vh;}
+
+/* ── Two-pane layout ── */
+.preview-pane{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 32px;gap:24px;overflow-y:auto;}
+.spec-pane{width:360px;background:#fff;border-left:1px solid #e0e0e0;overflow-y:auto;flex-shrink:0;}
+.pane-head{padding:18px 20px 14px;border-bottom:1px solid #f0f0f0;}
+.pane-head h2{font-size:14px;font-weight:700;color:#111;}
+.pane-head p{font-size:11.5px;color:#888;margin-top:3px;}
+.spec-section{padding:14px 20px;border-bottom:1px solid #f5f5f5;}
+.spec-section h3{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.spec-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px;font-size:12px;}
+.spec-row .lbl{color:#888;flex-shrink:0;width:140px;}
+.spec-row .val{color:#111;font-weight:500;text-align:right;word-break:break-all;}
+.spec-row .val.code{font-family:monospace;font-size:11px;background:#f5f5f5;padding:1px 5px;border-radius:3px;}
+.checklist{list-style:none;font-size:12px;}
+.checklist li{padding:3px 0;color:#333;}
+.checklist li::before{content:'✓ ';color:#22C55E;font-weight:700;}
+.checklist li.warn::before{content:'⚠ ';color:#E65100;}
+.snippet{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:11px;padding:12px;border-radius:6px;overflow-x:auto;white-space:pre;line-height:1.55;margin-top:6px;}
+.preview-label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;align-self:flex-start;}
+
+/* ── Admin table (dimmed background) ── */
+.scene{position:relative;width:100%;max-width:860px;border-radius:10px;overflow:hidden;}
+.admin-bg{filter:brightness(0.88);pointer-events:none;user-select:none;}
+.browser-chrome{background:#e8e8e8;border-radius:10px 10px 0 0;padding:8px 14px;display:flex;align-items:center;gap:10px;border:1px solid #d0d0d0;border-bottom:none;}
+.traffic-lights{display:flex;gap:6px;}
+.tl{width:11px;height:11px;border-radius:50%;}
+.tl-r{background:#ff5f57;} .tl-a{background:#febc2e;} .tl-g{background:#28c840;}
+.url-bar{flex:1;background:#fff;border-radius:5px;padding:4px 12px;font-size:12px;color:#555;text-align:center;border:1px solid #ddd;}
+.admin-card{background:#fff;border-radius:0 0 0 0;border:1px solid #d0d0d0;padding:22px 22px 0;}
+.admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.admin-title{font-size:20px;font-weight:700;color:#111;}
+.dl-btn{background:#2196F3;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.tabs{display:flex;border-bottom:2px solid #e8e8e8;margin-bottom:0;gap:0;}
+.tab{padding:8px 16px;font-size:12.5px;font-weight:500;color:#888;white-space:nowrap;}
+.tab.active{font-weight:600;color:#1a1a1a;border-bottom:2.5px solid #1a1a1a;margin-bottom:-2px;}
+.tab-badge{background:#EF4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px;}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;}
+.data-table th{padding:9px 10px;text-align:left;font-weight:500;color:#888;font-size:11px;border-bottom:1px solid #e8e8e8;}
+.data-table td{padding:11px 10px;}
+.row-alt{background:#EBF4FB;} .row-plain{background:#fff;}
+.cell-id{color:#2196F3;font-weight:600;}
+.cell-name{color:#111;font-weight:500;} .cell-type{color:#555;} .cell-amt{color:#111;font-weight:600;} .cell-date{color:#555;}
+.cell-act{display:flex;gap:8px;align-items:center;font-size:12px;}
+.act-v{color:#2196F3;font-weight:500;} .act-a{color:#22C55E;font-weight:500;} .act-r{color:#EF4444;font-weight:500;} .act-sep{color:#aaa;}
+
+/* ── Scene overlay ── */
+.scene-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.25);pointer-events:none;}
+
+/* ── Flyout panel ── */
+.flyout{position:absolute;top:0;right:0;bottom:0;width:360px;background:#f5f6f7;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,0.14);}
+.flyout-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#fff;border-bottom:1px solid #e8e8e8;flex-shrink:0;}
+.flyout-title{font-size:15px;font-weight:700;color:#111;}
+.flyout-close{width:28px;height:28px;border-radius:6px;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;font-size:16px;font-weight:400;}
+.flyout-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+.flyout-section{background:#fff;border-radius:10px;border:1px solid #e8e8e8;overflow:hidden;}
+.flyout-section-head{padding:12px 16px 8px;border-bottom:1px solid #f0f0f0;}
+.flyout-section-title{font-size:13px;font-weight:700;color:#111;}
+.flyout-section-sub{font-size:11.5px;color:#888;margin-top:2px;}
+.flyout-fields{padding:12px 16px;display:flex;flex-direction:column;gap:11px;}
+.flyout-field{}
+.flyout-field-label{font-size:11px;font-weight:600;color:#888;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
+.flyout-field-value{font-size:13px;color:#111;font-weight:500;}
+.flyout-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.status-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;}
+.status-pending{background:#FFF3E0;color:#E65100;}
+/* Document row */
+.doc-row{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f5f5f5;}
+.doc-row:last-child{border-bottom:none;}
+.doc-info{display:flex;align-items:center;gap:9px;}
+.doc-icon{width:30px;height:30px;border-radius:7px;background:#EBF4FB;display:flex;align-items:center;justify-content:center;}
+.doc-name{font-size:12.5px;font-weight:500;color:#111;}
+.doc-size{font-size:11px;color:#aaa;}
+.doc-view{font-size:12px;color:#2196F3;font-weight:500;cursor:pointer;}
+/* Flyout footer */
+.flyout-footer{display:flex;gap:10px;padding:14px 16px;background:#fff;border-top:1px solid #e8e8e8;flex-shrink:0;}
+.btn-reject{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:8px;border:1.5px solid #EF4444;background:#fff;color:#EF4444;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-approve{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:8px;border:none;background:#2196F3;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ PREVIEW PANE ═══════════════════ -->
+<div class="preview-pane">
+  <div class="preview-label">Admin Dashboard — Flyout Panel (View Record)</div>
+
+  <div class="scene">
+
+    <!-- ── Background: admin table (dimmed) ── -->
+    <div class="admin-bg">
+      <div class="browser-chrome">
+        <div class="traffic-lights"><div class="tl tl-r"></div><div class="tl tl-a"></div><div class="tl tl-g"></div></div>
+        <div class="url-bar">🔒 claims.brand.zotok.ai</div>
+      </div>
+      <div class="admin-card">
+        <div class="admin-header">
+          <div class="admin-title">Expense Claims</div>
+          <button class="dl-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><polyline points="7 10 12 15 17 10" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+            Download
+          </button>
+        </div>
+        <div class="tabs">
+          <div class="tab active">Pending for Approval <span class="tab-badge">5</span></div>
+          <div class="tab">Waiting for Disbursement</div>
+          <div class="tab">Disbursed</div>
+          <div class="tab">Rejected</div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>S.No</th><th>Record ID</th><th>Field Agent</th><th>Type</th><th>Amount</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr class="row-alt" style="outline:2px solid #2196F3;">
+              <td style="color:#555;">1</td><td><span class="cell-id">REC-4821</span></td>
+              <td class="cell-name">Rajesh Sharma</td><td class="cell-type">Event Expense</td>
+              <td class="cell-amt">₹3,400</td><td class="cell-date">28 Mar 2026</td>
+              <td><div class="cell-act"><span class="act-v">View</span><span class="act-sep">|</span><span class="act-a">Approve</span><span class="act-sep">|</span><span class="act-r">Reject</span></div></td>
+            </tr>
+            <tr class="row-plain"><td style="color:#555;">2</td><td><span class="cell-id">REC-4819</span></td><td class="cell-name">Priya Nair</td><td class="cell-type">Meeting Expense</td><td class="cell-amt">₹1,850</td><td class="cell-date">27 Mar 2026</td><td><div class="cell-act"><span class="act-v">View</span><span class="act-sep">|</span><span class="act-a">Approve</span><span class="act-sep">|</span><span class="act-r">Reject</span></div></td></tr>
+            <tr class="row-alt"><td style="color:#555;">3</td><td><span class="cell-id">REC-4816</span></td><td class="cell-name">Manish Dubey</td><td class="cell-type">Travel Expense</td><td class="cell-amt">₹2,100</td><td class="cell-date">26 Mar 2026</td><td><div class="cell-act"><span class="act-v">View</span><span class="act-sep">|</span><span class="act-a">Approve</span><span class="act-sep">|</span><span class="act-r">Reject</span></div></td></tr>
+            <tr class="row-plain"><td style="color:#555;">4</td><td><span class="cell-id">REC-4812</span></td><td class="cell-name">Sonal Mehta</td><td class="cell-type">Event Expense</td><td class="cell-amt">₹5,750</td><td class="cell-date">25 Mar 2026</td><td><div class="cell-act"><span class="act-v">View</span><span class="act-sep">|</span><span class="act-a">Approve</span><span class="act-sep">|</span><span class="act-r">Reject</span></div></td></tr>
+            <tr class="row-alt"><td style="color:#555;">5</td><td><span class="cell-id">REC-4809</span></td><td class="cell-name">Karan Joshi</td><td class="cell-type">Meeting Expense</td><td class="cell-amt">₹980</td><td class="cell-date">24 Mar 2026</td><td><div class="cell-act"><span class="act-v">View</span><span class="act-sep">|</span><span class="act-a">Approve</span><span class="act-sep">|</span><span class="act-r">Reject</span></div></td></tr>
+          </tbody>
+        </table>
+        <!-- spacer so the table has height for the flyout to overlay -->
+        <div style="height:60px;"></div>
+      </div>
+    </div>
+
+    <!-- ── Dim overlay ── -->
+    <div class="scene-overlay"></div>
+
+    <!-- ── Flyout panel ── -->
+    <div class="flyout">
+
+      <!-- Header -->
+      <div class="flyout-header">
+        <div class="flyout-title">Claim Details</div>
+        <button class="flyout-close">✕</button>
+      </div>
+
+      <!-- Body -->
+      <div class="flyout-body">
+
+        <!-- Section 1: Claimant -->
+        <div class="flyout-section">
+          <div class="flyout-section-head">
+            <div class="flyout-section-title">Claimant Information</div>
+            <div class="flyout-section-sub">Field agent who submitted this claim</div>
+          </div>
+          <div class="flyout-fields">
+            <div class="flyout-field-grid">
+              <div class="flyout-field">
+                <div class="flyout-field-label">Full Name</div>
+                <div class="flyout-field-value">Rajesh Sharma</div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Employee ID</div>
+                <div class="flyout-field-value">HIN-DSR-142</div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Designation</div>
+                <div class="flyout-field-value">Sales Representative</div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Region</div>
+                <div class="flyout-field-value">Nagpur</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Expense Details -->
+        <div class="flyout-section">
+          <div class="flyout-section-head">
+            <div class="flyout-section-title">Expense Details</div>
+            <div class="flyout-section-sub">Claim ID: HIN-CL-4821</div>
+          </div>
+          <div class="flyout-fields">
+            <div class="flyout-field-grid">
+              <div class="flyout-field">
+                <div class="flyout-field-label">Claim Type</div>
+                <div class="flyout-field-value">Event Expense</div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Status</div>
+                <div class="flyout-field-value"><span class="status-badge status-pending">Pending</span></div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Event Date</div>
+                <div class="flyout-field-value">28 Mar 2026</div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Location</div>
+                <div class="flyout-field-value">Nagpur</div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Persons Attended</div>
+                <div class="flyout-field-value">24</div>
+              </div>
+              <div class="flyout-field">
+                <div class="flyout-field-label">Amount Claimed</div>
+                <div class="flyout-field-value" style="color:#111;font-weight:700;font-size:14px;">₹3,400</div>
+              </div>
+            </div>
+            <div class="flyout-field">
+              <div class="flyout-field-label">Event Description</div>
+              <div class="flyout-field-value" style="font-size:12.5px;line-height:1.55;color:#444;">Dealer meet conducted at Nagpur district — product demonstration for Hindalco aluminium sheets with 24 dealers attending.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Documents -->
+        <div class="flyout-section">
+          <div class="flyout-section-head">
+            <div class="flyout-section-title">Uploaded Documents</div>
+            <div class="flyout-section-sub">Bills and proof of expenses</div>
+          </div>
+          <!-- Doc rows -->
+          <div class="doc-row">
+            <div class="doc-info">
+              <div class="doc-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="#2196F3" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="#2196F3" stroke-width="2"/></svg>
+              </div>
+              <div>
+                <div class="doc-name">Event_Bill_March.pdf</div>
+                <div class="doc-size">1.2 MB · PDF</div>
+              </div>
+            </div>
+            <span class="doc-view">View</span>
+          </div>
+          <div class="doc-row">
+            <div class="doc-info">
+              <div class="doc-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#2196F3" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.5" stroke="#2196F3" stroke-width="2"/><polyline points="21 15 16 10 5 21" stroke="#2196F3" stroke-width="2"/></svg>
+              </div>
+              <div>
+                <div class="doc-name">Venue_Photo_01.jpg</div>
+                <div class="doc-size">840 KB · JPG</div>
+              </div>
+            </div>
+            <span class="doc-view">View</span>
+          </div>
+          <div class="doc-row">
+            <div class="doc-info">
+              <div class="doc-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#2196F3" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.5" stroke="#2196F3" stroke-width="2"/><polyline points="21 15 16 10 5 21" stroke="#2196F3" stroke-width="2"/></svg>
+              </div>
+              <div>
+                <div class="doc-name">Attendee_List.jpg</div>
+                <div class="doc-size">620 KB · JPG</div>
+              </div>
+            </div>
+            <span class="doc-view">View</span>
+          </div>
+        </div>
+
+      </div><!-- /flyout-body -->
+
+      <!-- Footer -->
+      <div class="flyout-footer">
+        <button class="btn-reject">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/></svg>
+          Reject
+        </button>
+        <button class="btn-approve">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Approve
+        </button>
+      </div>
+
+    </div><!-- /flyout -->
+
+  </div><!-- /scene -->
+</div><!-- /preview-pane -->
+
+
+<!-- ═══════════════════ SPEC PANE ═══════════════════ -->
+<div class="spec-pane">
+  <div class="pane-head">
+    <h2>Admin Dashboard Flyout</h2>
+    <p>Right-side panel opened on "View" click · Overlays the table</p>
+  </div>
+
+  <!-- When to use -->
+  <div class="spec-section">
+    <h3>When to Use</h3>
+    <p style="font-size:12px;color:#555;line-height:1.6;">When the manager clicks <strong>View</strong> on any table row, a flyout panel slides in from the right showing the full record detail. The table remains visible but dimmed. Approve / Reject actions are in the flyout footer.</p>
+  </div>
+
+  <!-- Dimensions -->
+  <div class="spec-section">
+    <h3>Flyout Dimensions</h3>
+    <div class="spec-row"><span class="lbl">Width</span><span class="val">360px</span></div>
+    <div class="spec-row"><span class="lbl">Position</span><span class="val code">absolute; top:0; right:0; bottom:0</span></div>
+    <div class="spec-row"><span class="lbl">Background</span><span class="val code">#f5f6f7</span></div>
+    <div class="spec-row"><span class="lbl">Box shadow</span><span class="val code">-4px 0 24px rgba(0,0,0,.14)</span></div>
+    <div class="spec-row"><span class="lbl">Layout</span><span class="val">flex-column: header + scrollable body + sticky footer</span></div>
+  </div>
+
+  <!-- Overlay -->
+  <div class="spec-section">
+    <h3>Background Overlay</h3>
+    <div class="spec-row"><span class="lbl">Table filter</span><span class="val code">filter: brightness(0.88)</span></div>
+    <div class="spec-row"><span class="lbl">Dim overlay</span><span class="val code">rgba(0,0,0,0.25)</span></div>
+    <div class="spec-row"><span class="lbl">Scene container</span><span class="val code">position: relative; overflow: hidden</span></div>
+    <div class="spec-row"><span class="lbl">Active row</span><span class="val code">outline: 2px solid #2196F3</span></div>
+  </div>
+
+  <!-- Color tokens -->
+  <div class="spec-section">
+    <h3>Color Tokens</h3>
+    <div class="spec-row"><span class="lbl">Header bg</span><span class="val code">#fff</span></div>
+    <div class="spec-row"><span class="lbl">Header title</span><span class="val code">#111, 15px, 700</span></div>
+    <div class="spec-row"><span class="lbl">Close button bg</span><span class="val code">#f5f5f5, border-radius 6px</span></div>
+    <div class="spec-row"><span class="lbl">Body bg</span><span class="val code">#f5f6f7</span></div>
+    <div class="spec-row"><span class="lbl">Section card bg</span><span class="val code">#fff, border 1px #e8e8e8, radius 10px</span></div>
+    <div class="spec-row"><span class="lbl">Section title</span><span class="val code">#111, 13px, 700</span></div>
+    <div class="spec-row"><span class="lbl">Section subtitle</span><span class="val code">#888, 11.5px</span></div>
+    <div class="spec-row"><span class="lbl">Field label</span><span class="val code">#888, 11px, 600, uppercase</span></div>
+    <div class="spec-row"><span class="lbl">Field value</span><span class="val code">#111, 13px, 500</span></div>
+    <div class="spec-row"><span class="lbl">Amount value</span><span class="val code">#111, 14px, 700</span></div>
+    <div class="spec-row"><span class="lbl">Status: Pending</span><span class="val code">bg #FFF3E0, text #E65100</span></div>
+    <div class="spec-row"><span class="lbl">Status: Approved</span><span class="val code">bg #E8F5E9, text #2E7D32</span></div>
+    <div class="spec-row"><span class="lbl">Status: Rejected</span><span class="val code">bg #FFEBEE, text #C62828</span></div>
+    <div class="spec-row"><span class="lbl">Doc icon bg</span><span class="val code">#EBF4FB</span></div>
+    <div class="spec-row"><span class="lbl">Doc view link</span><span class="val code">#2196F3, 12px, 500</span></div>
+    <div class="spec-row"><span class="lbl">Footer bg</span><span class="val code">#fff, border-top 1px #e8e8e8</span></div>
+    <div class="spec-row"><span class="lbl">Reject btn</span><span class="val code">border 1.5px #EF4444, text #EF4444</span></div>
+    <div class="spec-row"><span class="lbl">Approve btn</span><span class="val code">bg #2196F3, text #fff</span></div>
+  </div>
+
+  <!-- Section structure -->
+  <div class="spec-section">
+    <h3>Section Structure</h3>
+    <ul class="checklist">
+      <li>Each section: white card, radius 10px, border #e8e8e8</li>
+      <li>Section head: title (bold) + subtitle (grey), border-bottom</li>
+      <li>Fields: 2-column grid for short values, full-width for long text</li>
+      <li>Field label: uppercase, 11px, #888, letter-spacing .3px</li>
+      <li>Field value: 13px, #111, font-weight 500</li>
+      <li>Documents: icon + name/size + View link per row</li>
+      <li class="warn">Sections are scrollable — body has overflow-y: auto</li>
+      <li class="warn">Footer is sticky — never scrolls away</li>
+    </ul>
+  </div>
+
+  <!-- Footer buttons -->
+  <div class="spec-section">
+    <h3>Footer Button Rules</h3>
+    <ul class="checklist">
+      <li>Both buttons flex:1 (equal width)</li>
+      <li>border-radius: 8px, padding: 11px</li>
+      <li>Reject: white bg, red border + red text + X icon</li>
+      <li>Approve: blue bg (#2196F3) + white text + check icon</li>
+      <li class="warn">Adapt labels per use case (e.g., "Disburse", "Send Back")</li>
+    </ul>
+  </div>
+
+  <!-- HTML snippet: flyout shell -->
+  <div class="spec-section">
+    <h3>HTML Snippet — Flyout Shell</h3>
+    <div class="snippet">&lt;!-- scene wrapper --&gt;
+&lt;div style="position:relative;
+  width:100%;max-width:900px;"&gt;
+
+  &lt;!-- table (dimmed) --&gt;
+  &lt;div style="filter:brightness(0.88);
+    pointer-events:none;"&gt;
+    ...admin table...
+  &lt;/div&gt;
+
+  &lt;!-- dim overlay --&gt;
+  &lt;div style="position:absolute;inset:0;
+    background:rgba(0,0,0,0.25);
+    pointer-events:none;"&gt;&lt;/div&gt;
+
+  &lt;!-- flyout --&gt;
+  &lt;div style="position:absolute;
+    top:0;right:0;bottom:0;width:360px;
+    background:#f5f6f7;display:flex;
+    flex-direction:column;
+    box-shadow:-4px 0 24px
+      rgba(0,0,0,.14);"&gt;
+
+    &lt;!-- header --&gt;
+    &lt;div style="display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:16px 20px;background:#fff;
+      border-bottom:1px solid #e8e8e8;
+      flex-shrink:0;"&gt;
+      &lt;div style="font-size:15px;
+        font-weight:700;color:#111;"&gt;
+        Record Title
+      &lt;/div&gt;
+      &lt;button style="width:28px;height:28px;
+        border-radius:6px;background:#f5f5f5;
+        border:none;cursor:pointer;
+        font-size:16px;color:#555;"&gt;
+        ✕
+      &lt;/button&gt;
+    &lt;/div&gt;
+
+    &lt;!-- scrollable body --&gt;
+    &lt;div style="flex:1;overflow-y:auto;
+      padding:14px 16px;
+      display:flex;flex-direction:column;
+      gap:12px;"&gt;
+      ...sections...
+    &lt;/div&gt;
+
+    &lt;!-- sticky footer --&gt;
+    &lt;div style="display:flex;gap:10px;
+      padding:14px 16px;background:#fff;
+      border-top:1px solid #e8e8e8;
+      flex-shrink:0;"&gt;
+      &lt;button style="flex:1;padding:11px;
+        border-radius:8px;
+        border:1.5px solid #EF4444;
+        background:#fff;color:#EF4444;
+        font-weight:600;cursor:pointer;"&gt;
+        ✕ Reject
+      &lt;/button&gt;
+      &lt;button style="flex:1;padding:11px;
+        border-radius:8px;border:none;
+        background:#2196F3;color:#fff;
+        font-weight:600;cursor:pointer;"&gt;
+        ✓ Approve
+      &lt;/button&gt;
+    &lt;/div&gt;
+
+  &lt;/div&gt;&lt;!-- /flyout --&gt;
+&lt;/div&gt;&lt;!-- /scene --&gt;</div>
+  </div>
+
+  <!-- Section card snippet -->
+  <div class="spec-section">
+    <h3>HTML Snippet — Section Card</h3>
+    <div class="snippet">&lt;div style="background:#fff;
+  border-radius:10px;
+  border:1px solid #e8e8e8;
+  overflow:hidden;"&gt;
+
+  &lt;!-- section header --&gt;
+  &lt;div style="padding:12px 16px 8px;
+    border-bottom:1px solid #f0f0f0;"&gt;
+    &lt;div style="font-size:13px;
+      font-weight:700;color:#111;"&gt;
+      Section Title
+    &lt;/div&gt;
+    &lt;div style="font-size:11.5px;
+      color:#888;margin-top:2px;"&gt;
+      Section subtitle
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;!-- fields --&gt;
+  &lt;div style="padding:12px 16px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:11px;"&gt;
+    &lt;div&gt;
+      &lt;div style="font-size:11px;
+        font-weight:600;color:#888;
+        text-transform:uppercase;
+        letter-spacing:.3px;
+        margin-bottom:3px;"&gt;
+        Field Label
+      &lt;/div&gt;
+      &lt;div style="font-size:13px;
+        color:#111;font-weight:500;"&gt;
+        Field Value
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</div>
+  </div>
+
+  <!-- Live example -->
+  <div class="spec-section">
+    <h3>Companion Template</h3>
+    <p style="font-size:12px;color:#555;line-height:1.6;">
+      Always used alongside:<br>
+      <code style="font-size:11px;background:#f5f5f5;padding:1px 4px;border-radius:3px;">references/tmpl_admin_dashboard.html</code>
+    </p>
+  </div>
+
+</div><!-- /spec-pane -->
+
+</body>
+</html>
