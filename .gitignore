@@ -1,6 +1,18 @@
+# Dependencies
 node_modules/
-dist/
-.env
-.DS_Store
 proxy/node_modules/
-node_modules
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
