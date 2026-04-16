@@ -4,6 +4,7 @@ proxy/node_modules/
 
 # Build output
 dist/
+.next/
 
 # Environment
 .env
