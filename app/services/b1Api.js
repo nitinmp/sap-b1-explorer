@@ -37,6 +37,32 @@ export async function fetchB1(path, params = {}) {
   return res.json()
 }
 
+export function escapeODataString(value) {
+  return String(value).replaceAll("'", "''")
+}
+
+export function buildSubstringOfFilter(fields, rawText) {
+  const text = (rawText ?? '').trim()
+  if (!text) return null
+  const escaped = escapeODataString(text)
+  const parts = fields.map((field) => `substringof('${escaped}',${field})`)
+  return `(${parts.join(' or ')})`
+}
+
+export async function fetchB1WithFallback(path, params, fallbacks = []) {
+  try {
+    return await fetchB1(path, params)
+  } catch (err) {
+    for (const fb of fallbacks) {
+      try {
+        return await fetchB1(path, fb)
+      } catch (_) {
+      }
+    }
+    throw err
+  }
+}
+
 export async function checkHealth() {
   try {
     const res = await fetch('/api/health')

@@ -4,9 +4,10 @@ import React, { useState } from 'react'
 import FilterBar from '../FilterBar'
 import GridView from '../GridView'
 import Flyout from '../Flyout'
-import { fetchB1 } from '../../services/b1Api'
+import { buildSubstringOfFilter, escapeODataString, fetchB1, fetchB1WithFallback } from '../../services/b1Api'
 
 const FILTERS = [
+  { name: 'SearchText', label: 'Search', type: 'text', placeholder: 'Doc # / Customer / Ref / Remarks', fullWidth: true },
   { name: 'DocNum', label: 'Doc Number', type: 'text', placeholder: 'e.g. 1001' },
   { name: 'CardCode', label: 'Customer Code', type: 'text', placeholder: 'e.g. C001' },
   { name: 'DateFrom', label: 'Date From', type: 'date' },
@@ -40,12 +41,31 @@ const COLUMNS = [
   { field: 'DocCurrency', headerName: 'Currency' },
 ]
 
-const SELECT = 'DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocumentStatus,DocCurrency,VatSum,DiscountPercent,Reference1,Reference2,Comments'
+const SELECT = 'DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocumentStatus,DocCurrency,VatSum,DiscountPercent,Reference1,Reference2,Comments'
 
 const fmt = (v) => (v != null ? Number(v).toLocaleString(undefined, { minimumFractionDigits: 2 }) : null)
 const statusLabel = (s) => s === 'bost_Open' ? 'Open' : s === 'bost_Close' ? 'Closed' : s
 
 function buildSections(row) {
+  if (row?.__loading) {
+    return [
+      {
+        title: 'Loading',
+        fields: [{ label: 'Status', value: 'Fetching details…', fullWidth: true }],
+      },
+    ]
+  }
+  if (row?.__error) {
+    return [
+      {
+        title: 'Error',
+        fields: [{ label: 'Message', value: row.__error, fullWidth: true }],
+      },
+    ]
+  }
+
+  const lines = Array.isArray(row.DocumentLines) ? row.DocumentLines : []
+
   return [
     {
       title: 'Document Info',
@@ -58,6 +78,7 @@ function buildSections(row) {
         { label: 'Status', value: statusLabel(row.DocumentStatus) },
         { label: 'Reference 1', value: row.Reference1 },
         { label: 'Reference 2', value: row.Reference2 },
+        ...(row.NumAtCard ? [{ label: 'Customer Ref', value: row.NumAtCard, fullWidth: true }] : []),
       ],
     },
     {
@@ -67,6 +88,20 @@ function buildSections(row) {
         { label: 'Card Name', value: row.CardName, fullWidth: true },
       ],
     },
+    ...(lines.length ? [{
+      title: 'Lines',
+      table: {
+        columns: [
+          { key: 'LineNum', label: '#', align: 'right' },
+          { key: 'ItemCode', label: 'Item' },
+          { key: 'ItemDescription', label: 'Description', wrap: true },
+          { key: 'Quantity', label: 'Qty', align: 'right' },
+          { key: 'UnitPrice', label: 'Price', align: 'right', format: (v) => (v != null ? fmt(v) : '—') },
+          { key: 'LineTotal', label: 'Total', align: 'right', format: (v) => (v != null ? fmt(v) : '—') },
+        ],
+        rows: lines,
+      },
+    }] : []),
     {
       title: 'Financials',
       fields: [
@@ -95,8 +130,17 @@ export default function ARInvoices() {
     setSelected(null)
     try {
       const parts = []
+      const q = (vals.SearchText ?? '').trim()
+      if (q) {
+        const qParts = []
+        const num = parseInt(q, 10)
+        if (!Number.isNaN(num)) qParts.push(`DocNum eq ${num}`)
+        const text = buildSubstringOfFilter(['CardCode', 'CardName', 'Reference1', 'Reference2', 'Comments', 'NumAtCard'], q)
+        if (text) qParts.push(text)
+        if (qParts.length) parts.push(`(${qParts.join(' or ')})`)
+      }
       if (vals.DocNum) parts.push(`DocNum eq ${parseInt(vals.DocNum, 10)}`)
-      if (vals.CardCode) parts.push(`CardCode eq '${vals.CardCode}'`)
+      if (vals.CardCode) parts.push(`CardCode eq '${escapeODataString(vals.CardCode)}'`)
       if (vals.DateFrom) parts.push(`DocDate ge '${vals.DateFrom}'`)
       if (vals.DateTo) parts.push(`DocDate le '${vals.DateTo}'`)
       if (vals.Status === 'open') parts.push("DocumentStatus eq 'bost_Open'")
@@ -117,9 +161,27 @@ export default function ARInvoices() {
     }
   }
 
+  const handleRowClick = async (row) => {
+    const docEntry = row?.DocEntry
+    const docNum = row?.DocNum
+    if (docEntry == null) return
+    setSelected({ __loading: true, DocEntry: docEntry, DocNum: docNum, CardName: row.CardName })
+    try {
+      const detailPath = `/b1s/v1/Invoices(${docEntry})`
+      const detail = await fetchB1WithFallback(
+        detailPath,
+        { $expand: 'DocumentLines' },
+        [{}, { $expand: 'DocumentLines,TaxExtension' }]
+      )
+      setSelected(detail)
+    } catch (err) {
+      setSelected({ __error: err.message, ...row })
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <FilterBar filters={FILTERS} onSearch={handleSearch} />
+      <FilterBar filters={FILTERS} onSearch={handleSearch} autoSearch />
       <GridView
         columns={COLUMNS}
         rows={rows}
@@ -127,12 +189,12 @@ export default function ARInvoices() {
         error={error}
         totalCount={total}
         exportFileName="ar-invoices"
-        onRowClick={setSelected}
+        onRowClick={handleRowClick}
       />
       {selected && (
         <Flyout
-          title={`Invoice #${selected.DocNum}`}
-          subtitle={selected.CardName}
+          title={`Invoice #${selected.DocNum ?? selected.DocEntry ?? ''}`}
+          subtitle={selected.CardName || selected.CardCode || ''}
           sections={buildSections(selected)}
           onClose={() => setSelected(null)}
         />

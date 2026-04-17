@@ -1,0 +1,17 @@
+{
+  "RoundingMethod": "borm_NoRounding",
+  "GroupNum": "boplgn_Group2",
+  "BasePriceList": 1,
+  "Factor": 1.0,
+  "PriceListNo": 1,
+  "PriceListName": "Base Price",
+  "IsGrossPrice": "tNO",
+  "Active": "tYES",
+  "ValidFrom": null,
+  "ValidTo": null,
+  "DefaultPrimeCurrency": "GBP",
+  "DefaultAdditionalCurrency1": "GBP",
+  "DefaultAdditionalCurrency2": "GBP",
+  "RoundingRule": "borrRoundOff",
+  "FixedAmount": null
+}

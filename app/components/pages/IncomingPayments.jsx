@@ -4,9 +4,10 @@ import React, { useState } from 'react'
 import FilterBar from '../FilterBar'
 import GridView from '../GridView'
 import Flyout from '../Flyout'
-import { fetchB1 } from '../../services/b1Api'
+import { buildSubstringOfFilter, escapeODataString, fetchB1, fetchB1WithFallback } from '../../services/b1Api'
 
 const FILTERS = [
+  { name: 'SearchText', label: 'Search', type: 'text', placeholder: 'Doc # / Customer / Ref / Bank', fullWidth: true },
   { name: 'DocNum', label: 'Doc Number', type: 'text', placeholder: 'e.g. 3001' },
   { name: 'CardCode', label: 'Customer Code', type: 'text', placeholder: 'e.g. C001' },
   { name: 'DateFrom', label: 'Date From', type: 'date' },
@@ -27,9 +28,30 @@ const COLUMNS = [
   { field: 'PaymentType', headerName: 'Type' },
 ]
 
-const SELECT = 'DocNum,CardCode,CardName,DocDate,DocCurrency,CashSum,TransferSum,PaymentType,Reference1,Reference2,Remarks,TransactionCode,DueDate,BankCode,BankAccount,CheckAccount,TransferDate,TransferReference,LocalCurrency'
+const SELECT = 'DocEntry,DocNum,CardCode,CardName,DocDate,DocCurrency,CashSum,TransferSum,PaymentType,Reference1,Reference2,Remarks,TransactionCode,DueDate,BankCode,BankAccount,CheckAccount,TransferDate,TransferReference,LocalCurrency'
 
 function buildSections(row) {
+  if (row?.__loading) {
+    return [
+      {
+        title: 'Loading',
+        fields: [{ label: 'Status', value: 'Fetching details…', fullWidth: true }],
+      },
+    ]
+  }
+  if (row?.__error) {
+    return [
+      {
+        title: 'Error',
+        fields: [{ label: 'Message', value: row.__error, fullWidth: true }],
+      },
+    ]
+  }
+
+  const paymentInvoices = Array.isArray(row.PaymentInvoices) ? row.PaymentInvoices : []
+  const paymentChecks = Array.isArray(row.PaymentChecks) ? row.PaymentChecks : []
+  const paymentAccounts = Array.isArray(row.PaymentAccounts) ? row.PaymentAccounts : []
+
   return [
     {
       title: 'Payment Info',
@@ -69,6 +91,42 @@ function buildSections(row) {
         { label: 'Reference 2', value: row.Reference2 },
       ],
     },
+    ...(paymentInvoices.length ? [{
+      title: 'Applied Documents',
+      table: {
+        columns: [
+          { key: 'InvoiceType', label: 'Type' },
+          { key: 'DocEntry', label: 'DocEntry', align: 'right' },
+          { key: 'DocNum', label: 'Doc #', align: 'right' },
+          { key: 'SumApplied', label: 'Applied', align: 'right', format: (v) => (v != null ? fmtV(v) : '—') },
+          { key: 'AppliedFC', label: 'Applied FC', align: 'right', format: (v) => (v != null ? fmtV(v) : '—') },
+        ],
+        rows: paymentInvoices,
+      },
+    }] : []),
+    ...(paymentChecks.length ? [{
+      title: 'Checks',
+      table: {
+        columns: [
+          { key: 'CheckNumber', label: 'Check #' },
+          { key: 'BankCode', label: 'Bank' },
+          { key: 'DueDate', label: 'Due Date' },
+          { key: 'CheckSum', label: 'Amount', align: 'right', format: (v) => (v != null ? fmtV(v) : '—') },
+        ],
+        rows: paymentChecks,
+      },
+    }] : []),
+    ...(paymentAccounts.length ? [{
+      title: 'G/L Allocation',
+      table: {
+        columns: [
+          { key: 'AccountCode', label: 'Account' },
+          { key: 'SumPaid', label: 'Amount', align: 'right', format: (v) => (v != null ? fmtV(v) : '—') },
+          { key: 'Decription', label: 'Description', wrap: true },
+        ],
+        rows: paymentAccounts,
+      },
+    }] : []),
     ...(row.Remarks ? [{
       title: 'Remarks',
       fields: [{ label: 'Remarks', value: row.Remarks, fullWidth: true }],
@@ -89,8 +147,17 @@ export default function IncomingPayments() {
     setSelected(null)
     try {
       const parts = []
+      const q = (vals.SearchText ?? '').trim()
+      if (q) {
+        const qParts = []
+        const num = parseInt(q, 10)
+        if (!Number.isNaN(num)) qParts.push(`DocNum eq ${num}`)
+        const text = buildSubstringOfFilter(['CardCode', 'CardName', 'Reference1', 'Reference2', 'Remarks', 'BankCode', 'BankAccount', 'TransferReference'], q)
+        if (text) qParts.push(text)
+        if (qParts.length) parts.push(`(${qParts.join(' or ')})`)
+      }
       if (vals.DocNum) parts.push(`DocNum eq ${parseInt(vals.DocNum, 10)}`)
-      if (vals.CardCode) parts.push(`CardCode eq '${vals.CardCode}'`)
+      if (vals.CardCode) parts.push(`CardCode eq '${escapeODataString(vals.CardCode)}'`)
       if (vals.DateFrom) parts.push(`DocDate ge '${vals.DateFrom}'`)
       if (vals.DateTo) parts.push(`DocDate le '${vals.DateTo}'`)
 
@@ -109,9 +176,27 @@ export default function IncomingPayments() {
     }
   }
 
+  const handleRowClick = async (row) => {
+    const docEntry = row?.DocEntry
+    const docNum = row?.DocNum
+    if (docEntry == null) return
+    setSelected({ __loading: true, DocEntry: docEntry, DocNum: docNum, CardName: row.CardName })
+    try {
+      const detailPath = `/b1s/v1/IncomingPayments(${docEntry})`
+      const detail = await fetchB1WithFallback(
+        detailPath,
+        { $expand: 'PaymentInvoices,PaymentChecks,PaymentAccounts,PaymentCreditCards' },
+        [{}, { $expand: 'PaymentInvoices,PaymentChecks' }, { $expand: 'PaymentInvoices' }]
+      )
+      setSelected(detail)
+    } catch (err) {
+      setSelected({ __error: err.message, ...row })
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <FilterBar filters={FILTERS} onSearch={handleSearch} />
+      <FilterBar filters={FILTERS} onSearch={handleSearch} autoSearch />
       <GridView
         columns={COLUMNS}
         rows={rows}
@@ -119,12 +204,12 @@ export default function IncomingPayments() {
         error={error}
         totalCount={total}
         exportFileName="incoming-payments"
-        onRowClick={setSelected}
+        onRowClick={handleRowClick}
       />
       {selected && (
         <Flyout
-          title={`Payment #${selected.DocNum}`}
-          subtitle={selected.CardName}
+          title={`Payment #${selected.DocNum ?? selected.DocEntry ?? ''}`}
+          subtitle={selected.CardName || selected.CardCode || ''}
           sections={buildSections(selected)}
           onClose={() => setSelected(null)}
         />

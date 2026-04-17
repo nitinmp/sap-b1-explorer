@@ -27,6 +27,19 @@ export async function GET(request) {
   })
 
   try {
+    const fullUrl = new URL(`${process.env.SAP_HOST}${path}`);
+
+    Object.entries(sapParams || {}).forEach(([key, value]) => {
+      fullUrl.searchParams.append(key, value);
+    });
+
+    const curlCommand = `
+    curl -X GET "${fullUrl.toString()}" \
+      -H "Cookie: B1SESSION=${b1Session}" \
+      -H "Content-Type: application/json"
+    `;
+    console.log("\n")
+    console.log(curlCommand);
     const res = await sapClient.get(`${process.env.SAP_HOST}${path}`, {
       params: sapParams,
       headers: { Cookie: `B1SESSION=${b1Session}`, 'Content-Type': 'application/json' },
