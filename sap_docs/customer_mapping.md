@@ -16,7 +16,6 @@
 | priceListCode                                    | PriceListNum                | Price list                   |
 | customerDetails_grossCreditLimit                 | CreditLimit                 | Credit limit                 |
 | closingBalance                                   | CurrentAccountBalance       | Current AR balance           |
-| cfa                                              | SalesPersonCode             | Sales employee / CFA         |
 | customerDetails_cityName                         | City                        | City                         |
 | customerDetails_countryCode                      | Country                     | Country                      |
 | customerDetails_postalCode                       | ZipCode                     | Postal code                  |
